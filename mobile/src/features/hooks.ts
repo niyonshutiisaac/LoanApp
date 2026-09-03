@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Notifications from "expo-notifications";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { QUERY_KEYS } from "@/constants/api";
 import {
   authApi,
@@ -297,12 +297,18 @@ export function useUpdateShop() {
 }
 
 // ---------- Notifications ----------
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
 export function useNotificationsPermission(enabled: boolean) {
   return useQuery({
     queryKey: ["notifications", "permission"],
     queryFn: async () => {
-      if (!enabled) return false;
+      // Expo Go (SDK 53+) no longer supports expo-notifications at all —
+      // even importing the module there throws, so it's loaded dynamically
+      // and only after this check has ruled Expo Go out.
+      if (!enabled || isExpoGo) return false;
       try {
+        const Notifications = await import("expo-notifications");
         const { status } = await Notifications.getPermissionsAsync();
         if (status === "granted") return true;
         const req = await Notifications.requestPermissionsAsync();

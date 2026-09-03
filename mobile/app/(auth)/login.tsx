@@ -10,7 +10,7 @@ import { Screen } from "@/components/ui/Screen";
 import { useLogin } from "@/features/hooks";
 import { useT, useTpl } from "@/i18n";
 import { useState } from "react";
-import { ApiClientError } from "@/services/api/httpClient";
+import { ApiClientError, isTimeoutError } from "@/services/api/httpClient";
 
 export default function LoginScreen() {
   const tt = useT();
@@ -38,7 +38,11 @@ export default function LoginScreen() {
     try {
       await login.mutateAsync(values);
     } catch (e) {
-      const message = e instanceof ApiClientError ? e.message : tt("auth.loginError");
+      const message = isTimeoutError(e)
+        ? tt("auth.serverWakingUp")
+        : e instanceof ApiClientError
+          ? e.message
+          : tt("auth.loginError");
       setError("password", { message });
     }
   });

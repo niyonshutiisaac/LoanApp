@@ -2,6 +2,10 @@ import { API_BASE_URL, REQUEST_TIMEOUT_MS } from "@/constants/api";
 import { useAuthStore, persistAccessToken } from "@/store/auth";
 import type { ApiEnvelope, ApiErrorBody } from "@/types/api";
 
+export function isTimeoutError(e: unknown): boolean {
+  return e instanceof Error && (e.name === "AbortError" || e.name === "TimeoutError");
+}
+
 export class ApiClientError extends Error {
   code: string;
   status: number;

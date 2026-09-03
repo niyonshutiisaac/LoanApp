@@ -11,6 +11,7 @@ import { ScreenHeader } from "@/components/ui/ScreenHeader";
 import { useRegister } from "@/features/hooks";
 import { useT, useTpl } from "@/i18n";
 import { useState } from "react";
+import { ApiClientError, isTimeoutError } from "@/services/api/httpClient";
 
 export default function RegisterScreen() {
   const tt = useT();
@@ -57,7 +58,11 @@ export default function RegisterScreen() {
         password: values.password,
       });
     } catch (e) {
-      const message = e instanceof Error ? e.message : tt("auth.registerError");
+      const message = isTimeoutError(e)
+        ? tt("auth.serverWakingUp")
+        : e instanceof ApiClientError
+          ? e.message
+          : tt("auth.registerError");
       setError("email", { message });
       setServerError(message);
     }

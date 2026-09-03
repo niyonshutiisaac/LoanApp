@@ -76,11 +76,13 @@ async function toPaged<T>(fn: () => Promise<Paginated<T>>): Promise<Paginated<T>
 export const authApi = {
   async login(input: LoginInput): Promise<AuthSession> {
     if (USE_MOCK_API) return mockAuth.login(db(), input);
-    return apiRequest<AuthSession>("/auth/login", { method: "POST", body: input, skipAuth: true });
+    // Longer timeout: login is often the first request after the app has been
+    // idle, and a free-tier Render backend can take ~30-50s to wake from sleep.
+    return apiRequest<AuthSession>("/auth/login", { method: "POST", body: input, skipAuth: true, timeoutMs: 45000 });
   },
   async register(input: RegisterInput): Promise<AuthSession> {
     if (USE_MOCK_API) return mockAuth.register(db(), input);
-    return apiRequest<AuthSession>("/auth/register", { method: "POST", body: input, skipAuth: true });
+    return apiRequest<AuthSession>("/auth/register", { method: "POST", body: input, skipAuth: true, timeoutMs: 45000 });
   },
   async me(): Promise<{ user: User; shop: Shop | null }> {
     if (USE_MOCK_API) return mockAuth.me(db());
