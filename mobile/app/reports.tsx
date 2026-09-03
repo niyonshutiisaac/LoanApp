@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -33,6 +34,7 @@ function rangeFor(period: PeriodKey): { from: string; to: string } {
 export default function ReportsScreen() {
   const tt = useT();
   const tpl = useTpl();
+  const router = useRouter();
   const [period, setPeriod] = useState<PeriodKey>("today");
   const { from, to } = useMemo(() => rangeFor(period), [period]);
   const { data, isLoading, isError, refetch } = useReport({ from, to });
@@ -108,7 +110,7 @@ export default function ReportsScreen() {
               data.customerDebts.slice(0, 8).map((debt) => (
                 <Pressable
                   key={debt.customerId}
-                  onPress={() => {}}
+                  onPress={() => router.push(`/customer/${debt.customerId}`)}
                   className="rounded-2xl border border-zinc-200/80 bg-white p-4"
                 >
                   <View className="flex-row items-center justify-between">

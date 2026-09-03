@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Input } from "@/components/ui/Input";
 import { Screen } from "@/components/ui/Screen";
 import { ScreenHeader } from "@/components/ui/ScreenHeader";
-import { useLogin } from "@/features/hooks";
+import { useChangePassword } from "@/features/hooks";
 import { useAuthStore } from "@/store/auth";
 import { useLocaleStore, useT, useTpl, type Locale } from "@/i18n";
 import { formatDate } from "@/utils/date";
@@ -25,7 +25,7 @@ export default function SettingsScreen() {
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
   const user = useAuthStore((s) => s.user);
-  const login = useLogin();
+  const changePasswordMutation = useChangePassword();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -34,15 +34,16 @@ export default function SettingsScreen() {
 
   async function changePassword() {
     setMessage(null);
+    if (!oldPassword) {
+      setMessage({ tone: "error", text: tt("set.oldPasswordError") });
+      return;
+    }
     if (newPassword.length < 6) {
       setMessage({ tone: "error", text: tt("set.newPasswordError") });
       return;
     }
-    // Mock mode: re-login simulation; backend mode uses the real endpoint.
     try {
-      if (user) {
-        await login.mutateAsync({ email: user.email, password: newPassword }).catch(() => undefined);
-      }
+      await changePasswordMutation.mutateAsync({ oldPassword, newPassword });
       setOldPassword("");
       setNewPassword("");
       setMessage({ tone: "success", text: tt("set.passwordChanged") });
@@ -75,7 +76,13 @@ export default function SettingsScreen() {
           {message ? (
             <Text className={`text-xs ${message.tone === "success" ? "text-success" : "text-danger"}`}>{message.text}</Text>
           ) : null}
-          <Button title={tt("set.updatePassword")} variant="outline" size="md" onPress={changePassword} />
+          <Button
+            title={tt("set.updatePassword")}
+            variant="outline"
+            size="md"
+            onPress={changePassword}
+            loading={changePasswordMutation.isPending}
+          />
         </Card>
       </View>
 

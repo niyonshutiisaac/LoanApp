@@ -8,6 +8,7 @@ import {
   expensesApi,
   paymentsApi,
   productsApi,
+  profileApi,
   purchasesApi,
   remindersApi,
   reportsApi,
@@ -66,6 +67,13 @@ export function useLogout() {
       await useAuthStore.getState().logout();
       queryClient.clear();
     },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: ({ oldPassword, newPassword }: { oldPassword: string; newPassword: string }) =>
+      profileApi.changePassword(oldPassword, newPassword),
   });
 }
 

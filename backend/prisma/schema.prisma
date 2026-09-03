@@ -1,0 +1,316 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Shop {
+  id                     String    @id @default(cuid())
+  name                   String
+  phone                  String?
+  address                String?
+  currency               String    @default("RWF")
+  timezone               String    @default("Africa/Kigali")
+  allowNegativeInventory Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  users     User[]
+  customers Customer[]
+  products  Product[]
+  sales     Sale[]
+  purchases Purchase[]
+  payments  Payment[]
+  expenses  Expense[]
+  reminders Reminder[]
+  ledgerEntries CustomerLedgerEntry[]
+  idempotencyKeys IdempotencyKey[]
+
+  @@map("shops")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  shopId       String
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  shop          Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([shopId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  shopId    String
+  name      String
+  phone     String?
+  address   String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shop          Shop                   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  ledgerEntries CustomerLedgerEntry[]
+  sales         Sale[]
+  payments      Payment[]
+  reminders     Reminder[]
+
+  @@index([shopId, isActive])
+  @@index([shopId, createdAt])
+  @@map("customers")
+}
+
+enum LedgerType {
+  SALE
+  CUSTOMER_PAYMENT
+  PURCHASE
+  EXPENSE
+  ADJUSTMENT
+}
+
+enum LedgerDirection {
+  IN
+  OUT
+}
+
+model CustomerLedgerEntry {
+  id          String          @id @default(cuid())
+  shopId      String
+  customerId  String
+  type        LedgerType
+  description String
+  amount      Decimal         @db.Decimal(14, 2)
+  direction   LedgerDirection
+  createdAt   DateTime        @default(now())
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([shopId])
+  @@map("customer_ledger_entries")
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  shopId            String
+  name              String
+  sku               String?
+  unit              String?
+  categoryId        String?
+  categoryName      String?
+  buyingPrice       Decimal  @db.Decimal(14, 2)
+  sellingPrice      Decimal  @db.Decimal(14, 2)
+  stockQuantity     Int      @default(0)
+  lowStockThreshold Int      @default(0)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  shop          Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  saleItems     SaleItem[]
+  purchaseItems PurchaseItem[]
+
+  @@index([shopId, isActive])
+  @@index([shopId, name])
+  @@map("products")
+}
+
+enum PaymentType {
+  CASH
+  CREDIT
+  PARTIAL
+}
+
+model Sale {
+  id               String      @id @default(cuid())
+  shopId           String
+  customerId       String?
+  paymentType      PaymentType
+  totalAmount      Decimal     @db.Decimal(14, 2)
+  paidAmount       Decimal     @db.Decimal(14, 2)
+  remainingAmount  Decimal     @db.Decimal(14, 2)
+  dueDate          DateTime?   @db.Date
+  soldAt           DateTime    @default(now())
+  notes            String?
+
+  shop     Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer Customer?  @relation(fields: [customerId], references: [id])
+  items    SaleItem[]
+  payments Payment[]
+
+  @@index([shopId, soldAt])
+  @@index([customerId])
+  @@map("sales")
+}
+
+model SaleItem {
+  id          String  @id @default(cuid())
+  saleId      String
+  productId   String?
+  productName String
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(14, 2)
+  total       Decimal @db.Decimal(14, 2)
+
+  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+  @@map("sale_items")
+}
+
+enum PurchasePaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+model Purchase {
+  id              String                @id @default(cuid())
+  shopId          String
+  totalAmount     Decimal               @db.Decimal(14, 2)
+  paymentAmount   Decimal               @db.Decimal(14, 2)
+  remainingAmount Decimal               @db.Decimal(14, 2)
+  paymentStatus   PurchasePaymentStatus
+  purchasedAt     DateTime              @default(now())
+  notes           String?
+
+  shop  Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  items PurchaseItem[]
+
+  @@index([shopId, purchasedAt])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id          String  @id @default(cuid())
+  purchaseId  String
+  productId   String?
+  productName String
+  quantity    Int
+  unitCost    Decimal @db.Decimal(14, 2)
+  total       Decimal @db.Decimal(14, 2)
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id])
+
+  @@index([purchaseId])
+  @@map("purchase_items")
+}
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  BANK
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  shopId       String
+  customerId   String
+  saleId       String?
+  amount       Decimal       @db.Decimal(14, 2)
+  method       PaymentMethod @default(CASH)
+  paidAt       DateTime      @default(now())
+  notes        String?
+  balanceAfter Decimal       @db.Decimal(14, 2)
+  createdAt    DateTime      @default(now())
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sale     Sale?    @relation(fields: [saleId], references: [id])
+
+  @@index([shopId, paidAt])
+  @@index([customerId])
+  @@map("payments")
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  shopId      String
+  category    String
+  description String?
+  amount      Decimal  @db.Decimal(14, 2)
+  expenseDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, expenseDate])
+  @@map("expenses")
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum ReminderChannel {
+  SMS
+  PUSH
+  EMAIL
+}
+
+model Reminder {
+  id            String          @id @default(cuid())
+  shopId        String
+  customerId    String
+  scheduledFor  DateTime
+  status        ReminderStatus  @default(PENDING)
+  channel       ReminderChannel @default(SMS)
+  message       String
+  sentAt        DateTime?
+  failedAt      DateTime?
+  error         String?
+  createdAt     DateTime        @default(now())
+
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, scheduledFor])
+  @@index([customerId])
+  @@map("reminders")
+}
+
+model IdempotencyKey {
+  id           String   @id @default(cuid())
+  shopId       String
+  key          String
+  endpoint     String
+  statusCode   Int
+  responseBody Json
+  createdAt    DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, key, endpoint])
+  @@map("idempotency_keys")
+}

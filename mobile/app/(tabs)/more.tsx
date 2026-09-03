@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -41,17 +41,9 @@ const MENU_GROUPS: {
 export default function MoreScreen() {
   const tt = useT();
   const router = useRouter();
-  const params = useLocalSearchParams<{ tab?: string }>();
   const [logsOut, setLogsOut] = useState(false);
   const logout = useLogout();
   const user = useAuthStore((s) => s.user);
-
-  const scrollToKey = params.tab ?? null;
-
-  const menus = useMemo(() => {
-    void scrollToKey;
-    return MENU_GROUPS;
-  }, [scrollToKey]);
 
   return (
     <Screen>
@@ -71,7 +63,7 @@ export default function MoreScreen() {
         </Card>
       </View>
 
-      {menus.map((group) => (
+      {MENU_GROUPS.map((group) => (
         <View key={group.titleKey} className="gap-2">
           <Text className="px-1 text-sm font-semibold text-ink-soft">{tt(group.titleKey)}</Text>
           <Card className="p-1.5">
@@ -79,13 +71,7 @@ export default function MoreScreen() {
               <Pressable
                 key={item.key}
                 accessibilityRole="button"
-                onPress={() => {
-                  if (item.key === "purchases" || item.key === "expenses") {
-                    router.push({ pathname: item.href, params: { tab: item.key } });
-                  } else {
-                    router.push(item.href as never);
-                  }
-                }}
+                onPress={() => router.push(item.href as never)}
                 className={cn(
                   "h-14 flex-row items-center gap-3 rounded-xl px-3 active:bg-zinc-50",
                   index > 0 && "border-t border-zinc-100",

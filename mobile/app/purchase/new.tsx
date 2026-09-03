@@ -43,6 +43,7 @@ export default function NewPurchaseScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [addedTotal, setAddedTotal] = useState<string>("0");
   const [paidNow, setPaidNow] = useState<"full" | "unpaid" | "partial">("full");
+  const [partialAmount, setPartialAmount] = useState("");
 
   const createPurchase = useCreatePurchase();
   const { data: productsData } = useProducts({ search, page: 1, limit: 50 });
@@ -86,8 +87,17 @@ export default function NewPurchaseScreen() {
       setErrorMessage(tt("puf2.errNoItems"));
       return;
     }
-    const paymentAmount =
-      paidNow === "full" ? String(total) : paidNow === "unpaid" ? "0" : "0";
+    let paymentAmount = "0";
+    if (paidNow === "full") {
+      paymentAmount = String(total);
+    } else if (paidNow === "partial") {
+      const amount = parseMoney(partialAmount || "0");
+      if (!(amount > 0) || amount >= total) {
+        setErrorMessage(tt("puf2.errPartialAmount"));
+        return;
+      }
+      paymentAmount = String(amount);
+    }
     try {
       const purchase = await createPurchase.mutateAsync({
         paymentAmount,
@@ -192,12 +202,22 @@ export default function NewPurchaseScreen() {
           <SegmentedControl
             options={[
               { label: tt("puf2.paidInFull"), value: "full" },
+              { label: tt("puf2.paidPartial"), value: "partial" },
               { label: tt("puf2.notPaid"), value: "unpaid" },
             ]}
             value={paidNow}
-            onChange={(v) => setPaidNow(v as "full" | "unpaid")}
+            onChange={(v) => setPaidNow(v as "full" | "unpaid" | "partial")}
             tone="primary"
           />
+          {paidNow === "partial" ? (
+            <Input
+              label={tt("puf2.amountPaidNow")}
+              placeholder={tt("puf2.cost")}
+              value={partialAmount}
+              onChangeText={(v) => setPartialAmount(v.replace(/[^0-9]/g, ""))}
+              keyboardType="decimal-pad"
+            />
+          ) : null}
         </Card>
 
         <Input label={tt("common.notesOptional")} placeholder={tt("puf2.notesPh")} value={notes} onChangeText={setNotes} className="mx-4" />
